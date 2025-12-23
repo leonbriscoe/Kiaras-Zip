@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Login - Zip</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <script>
+    // Apply theme immediately to prevent flash of unstyled content
+    (function() {
+      const theme = localStorage.getItem('zip_theme') || 'flowers';
+      document.body.classList.add('theme-' + theme);
+    })();
+  </script>
+  <main class="wrap">
+    <section class="card">
+      <div class="auth-container">
+        <h1>Let's Play Zip!</h1>
+
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">Sign In</button>
+          <button class="auth-tab" data-tab="register">Register</button>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" class="auth-form active">
+          <input type="text" id="loginUsername" placeholder="Username" required autocomplete="username" />
+          <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" />
+          <button type="submit" class="btn-primary">Sign In</button>
+          <div id="loginMessage" class="auth-message"></div>
+        </form>
+
+        <!-- Register Form -->
+        <form id="registerForm" class="auth-form">
+          <input type="text" id="registerUsername" placeholder="Choose a username" required autocomplete="username" />
+          <input type="password" id="registerPassword" placeholder="Choose a password" required autocomplete="new-password" />
+          <input type="password" id="registerConfirm" placeholder="Confirm password" required autocomplete="new-password" />
+          <button type="submit" class="btn-primary">Create Account</button>
+          <div id="registerMessage" class="auth-message"></div>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // =====================
+    // Check if already logged in
+    // =====================
+    (function() {
+      const user = localStorage.getItem("zip_currentUser");
+      if (user) {
+        window.location.href = "index.html";
+      }
+    })();
+
+    // =====================
+    // UI Helpers
+    // =====================
+    function showMessage(elementId, message, isError = true) {
+      const el = document.getElementById(elementId);
+      el.textContent = message;
+      el.className = 'auth-message ' + (isError ? 'error' : 'success');
+    }
+
+    function clearMessages() {
+      document.querySelectorAll('.auth-message').forEach(el => {
+        el.className = 'auth-message';
+        el.textContent = '';
+      });
+    }
+
+    // =====================
+    // Auth Tab Switching
+    // =====================
+    document.querySelectorAll('.auth-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const targetTab = tab.dataset.tab;
+        
+        // Update tab styles
+        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        // Show correct form
+        document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+        document.getElementById(targetTab + 'Form').classList.add('active');
+        
+        clearMessages();
+      });
+    });
+
+    // =====================
+    // Login Handler
+    // =====================
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessages();
+      
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+      
+      if (!username || !password) {
+        showMessage('loginMessage', 'Please enter username and password');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+          localStorage.setItem("zip_currentUser", username);
+          window.location.href = "index.html";
+          return;
+        }
+
+        if (res.status === 404) {
+          showMessage('loginMessage', 'User not found. Please register first!');
+          return;
+        }
+
+        if (res.status === 401) {
+          showMessage('loginMessage', 'Wrong password. Please try again.');
+          return;
+        }
+
+        showMessage('loginMessage', 'Login failed. Please try again.');
+      } catch (err) {
+        console.error('Login error:', err);
+        showMessage('loginMessage', 'Server error. Make sure the server is running.');
+      }
+    });
+
+    // =====================
+    // Register Handler
+    // =====================
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearMessages();
+      
+      const username = document.getElementById('registerUsername').value.trim();
+      const password = document.getElementById('registerPassword').value;
+      const confirm = document.getElementById('registerConfirm').value;
+      
+      if (!username || !password) {
+        showMessage('registerMessage', 'Please fill in all fields');
+        return;
+      }
+
+      if (username.length < 3) {
+        showMessage('registerMessage', 'Username must be at least 3 characters');
+        return;
+      }
+
+      if (password.length < 4) {
+        showMessage('registerMessage', 'Password must be at least 4 characters');
+        return;
+      }
+
+      if (password !== confirm) {
+        showMessage('registerMessage', 'Passwords do not match');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+          showMessage('registerMessage', 'Account created! You can now sign in.', false);
+          // Clear register form
+          document.getElementById('registerUsername').value = '';
+          document.getElementById('registerPassword').value = '';
+          document.getElementById('registerConfirm').value = '';
+          // Switch to login tab after 1.5s
+          setTimeout(() => {
+            document.querySelector('[data-tab="login"]').click();
+            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginUsername').focus();
+          }, 1500);
+          return;
+        }
+
+        if (res.status === 409) {
+          showMessage('registerMessage', 'Username already exists. Choose another.');
+          return;
+        }
+
+        if (res.status === 403) {
+          showMessage('registerMessage', 'Registration is currently disabled.');
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        showMessage('registerMessage', data.error || 'Registration failed');
+      } catch (err) {
+        console.error('Register error:', err);
+        showMessage('registerMessage', 'Server error. Make sure the server is running.');
+      }
+    });
+  </script>
+</body>
+</html>
+

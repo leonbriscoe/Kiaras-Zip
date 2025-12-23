@@ -8,54 +8,52 @@
 </head>
 
 <body>
+  <script>
+    // Apply theme immediately to prevent flash of unstyled content
+    (function() {
+      const theme = localStorage.getItem('zip_theme') || 'flowers';
+      document.body.classList.add('theme-' + theme);
+      
+      // Redirect to login if not logged in
+      const user = localStorage.getItem("zip_currentUser");
+      if (!user) {
+        window.location.href = "login.html";
+      }
+    })();
+  </script>
   <main class="wrap">
     <section class="card">
-      <!-- AUTH SECTION (shown when not logged in) -->
-      <div id="authSection" class="auth-container">
-        <h1>Let's Play Zip!</h1>
-        
-
-        <div class="auth-tabs">
-          <button class="auth-tab active" data-tab="login">Sign In</button>
-          <button class="auth-tab" data-tab="register">Register</button>
+      <div class="user-header">
+        <span class="user-info">Welcome, <strong id="currentUsername"></strong>!</span>
+        <div style="display:flex;gap:8px">
+          <a href="rankings.html" class="btn-logout">Rankings</a>
+          <button id="logoutBtn" class="btn-logout">Logout</button>
         </div>
-
-        <!-- Login Form -->
-        <form id="loginForm" class="auth-form active">
-          <input type="text" id="loginUsername" placeholder="Username" required autocomplete="username" />
-          <input type="password" id="loginPassword" placeholder="Password" required autocomplete="current-password" />
-          <button type="submit" class="btn-primary">Sign In</button>
-          <div id="loginMessage" class="auth-message"></div>
-        </form>
-
-        <!-- Register Form -->
-        <form id="registerForm" class="auth-form">
-          <input type="text" id="registerUsername" placeholder="Choose a username" required autocomplete="username" />
-          <input type="password" id="registerPassword" placeholder="Choose a password" required autocomplete="new-password" />
-          <input type="password" id="registerConfirm" placeholder="Confirm password" required autocomplete="new-password" />
-          <button type="submit" class="btn-primary">Create Account</button>
-          <div id="registerMessage" class="auth-message"></div>
-        </form>
       </div>
 
-      <!-- GAME SECTION (shown when logged in) -->
-      <div id="gameSection" class="hidden">
-        <div class="user-header">
-          <span class="user-info">Welcome, <strong id="currentUsername"></strong>!</span>
-          <div style="display:flex;gap:8px">
-            <a href="rankings.html" class="btn-logout">Rankings</a>
-            <button id="logoutBtn" class="btn-logout">Logout</button>
-          </div>
+      <!-- Theme Selector -->
+      <div class="theme-selector">
+        <div class="theme-selector-title">Select Theme</div>
+        <div class="theme-options">
+          <button class="theme-option" data-theme="flowers">
+            Tan & Flowers
+          </button>
+          <button class="theme-option" data-theme="geometry">
+            Geometry Dash
+          </button>
+          <button class="theme-option" data-theme="pacman">
+            Pacman
+          </button>
         </div>
+      </div>
 
-        <h1>Let's Play Zip!</h1>
-        <p class="subtitle">Drag from 1 → 2 → 3 → … Cover every cell!</p>
+      <h1>Let's Play Zip!</h1>
+      <p class="subtitle">Drag from 1 → 2 → 3 → … Cover every cell!</p>
 
-        <div id="dashboard" class="dashboard"></div>
+      <div id="dashboard" class="dashboard"></div>
 
-        <div class="list" id="zipList">
-          <span class="msg">Loading zips…</span>
-        </div>
+      <div class="list" id="zipList">
+        <span class="msg">Loading zips…</span>
       </div>
     </section>
   </main>
@@ -66,15 +64,6 @@
     // =====================
     function getCurrentUser() {
       return localStorage.getItem("zip_currentUser");
-    }
-
-    function setCurrentUser(username) {
-      if (username) {
-        localStorage.setItem("zip_currentUser", username);
-      } else {
-        localStorage.removeItem("zip_currentUser");
-      }
-      updateUI();
     }
 
     function getUserData(user) {
@@ -101,171 +90,11 @@
     }
 
     // =====================
-    // UI Updates
-    // =====================
-    function updateUI() {
-      const user = getCurrentUser();
-      const authSection = document.getElementById('authSection');
-      const gameSection = document.getElementById('gameSection');
-      
-      if (user) {
-        authSection.classList.add('hidden');
-        gameSection.classList.remove('hidden');
-        document.getElementById('currentUsername').textContent = user;
-        loadZips();
-      } else {
-        authSection.classList.remove('hidden');
-        gameSection.classList.add('hidden');
-      }
-    }
-
-    function showMessage(elementId, message, isError = true) {
-      const el = document.getElementById(elementId);
-      el.textContent = message;
-      el.className = 'auth-message ' + (isError ? 'error' : 'success');
-    }
-
-    function clearMessages() {
-      document.querySelectorAll('.auth-message').forEach(el => {
-        el.className = 'auth-message';
-        el.textContent = '';
-      });
-    }
-
-    // =====================
-    // Auth Tab Switching
-    // =====================
-    document.querySelectorAll('.auth-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        const targetTab = tab.dataset.tab;
-        
-        // Update tab styles
-        document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        
-        // Show correct form
-        document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
-        document.getElementById(targetTab + 'Form').classList.add('active');
-        
-        clearMessages();
-      });
-    });
-
-    // =====================
-    // Login Handler
-    // =====================
-    document.getElementById('loginForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearMessages();
-      
-      const username = document.getElementById('loginUsername').value.trim();
-      const password = document.getElementById('loginPassword').value;
-      
-      if (!username || !password) {
-        showMessage('loginMessage', 'Please enter username and password');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-        if (res.ok) {
-          setCurrentUser(username);
-          return;
-        }
-
-        if (res.status === 404) {
-          showMessage('loginMessage', 'User not found. Please register first!');
-          return;
-        }
-
-        if (res.status === 401) {
-          showMessage('loginMessage', 'Wrong password. Please try again.');
-          return;
-        }
-
-        showMessage('loginMessage', 'Login failed. Please try again.');
-      } catch (err) {
-        console.error('Login error:', err);
-        showMessage('loginMessage', 'Server error. Make sure the server is running.');
-      }
-    });
-
-    // =====================
-    // Register Handler
-    // =====================
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      clearMessages();
-      
-      const username = document.getElementById('registerUsername').value.trim();
-      const password = document.getElementById('registerPassword').value;
-      const confirm = document.getElementById('registerConfirm').value;
-      
-      if (!username || !password) {
-        showMessage('registerMessage', 'Please fill in all fields');
-        return;
-      }
-
-      if (username.length < 3) {
-        showMessage('registerMessage', 'Username must be at least 3 characters');
-        return;
-      }
-
-      if (password.length < 4) {
-        showMessage('registerMessage', 'Password must be at least 4 characters');
-        return;
-      }
-
-      if (password !== confirm) {
-        showMessage('registerMessage', 'Passwords do not match');
-        return;
-      }
-
-      try {
-        const res = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-
-        if (res.ok) {
-          showMessage('registerMessage', 'Account created! You can now sign in.', false);
-          // Clear register form
-          document.getElementById('registerUsername').value = '';
-          document.getElementById('registerPassword').value = '';
-          document.getElementById('registerConfirm').value = '';
-          // Switch to login tab after 1.5s
-          setTimeout(() => {
-            document.querySelector('[data-tab="login"]').click();
-            document.getElementById('loginUsername').value = username;
-            document.getElementById('loginUsername').focus();
-          }, 1500);
-          return;
-        }
-
-        if (res.status === 409) {
-          showMessage('registerMessage', 'Username already exists. Choose another.');
-          return;
-        }
-
-        const data = await res.json().catch(() => ({}));
-        showMessage('registerMessage', data.error || 'Registration failed');
-      } catch (err) {
-        console.error('Register error:', err);
-        showMessage('registerMessage', 'Server error. Make sure the server is running.');
-      }
-    });
-
-    // =====================
     // Logout Handler
     // =====================
     document.getElementById('logoutBtn').addEventListener('click', () => {
-      setCurrentUser(null);
+      localStorage.removeItem("zip_currentUser");
+      window.location.href = "login.html";
     });
 
     // =====================
@@ -353,10 +182,47 @@
     }
 
     // =====================
+    // Theme Management
+    // =====================
+    function getTheme() {
+      return localStorage.getItem('zip_theme') || 'flowers';
+    }
+
+    function setTheme(theme) {
+      localStorage.setItem('zip_theme', theme);
+      applyTheme(theme);
+    }
+
+    function applyTheme(theme) {
+      document.body.classList.remove('theme-flowers', 'theme-geometry', 'theme-pacman');
+      document.body.classList.add('theme-' + theme);
+      
+      // Update active state on theme buttons
+      document.querySelectorAll('.theme-option').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.theme === theme);
+      });
+    }
+
+    // Theme button click handlers
+    document.querySelectorAll('.theme-option').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setTheme(btn.dataset.theme);
+      });
+    });
+
+    // =====================
     // Initialize
     // =====================
     document.addEventListener('DOMContentLoaded', () => {
-      updateUI();
+      const user = getCurrentUser();
+      if (!user) {
+        window.location.href = "login.html";
+        return;
+      }
+      
+      document.getElementById('currentUsername').textContent = user;
+      applyTheme(getTheme());
+      loadZips();
     });
   </script>
 </body>

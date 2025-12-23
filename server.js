@@ -18,8 +18,8 @@ app.use(express.json());
 
 // Connect to MongoDB
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('✅ Connected to MongoDB'))
-  .catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log(' Connected to MongoDB'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // API: Register
 app.post('/api/register', async (req, res) => {
@@ -38,12 +38,12 @@ app.post('/api/register', async (req, res) => {
         return res.status(409).json({ error: 'exists' });
       }
       // Registration disabled after first user (uncomment to enforce)
-      // return res.status(403).json({ error: 'registration_disabled' });
+      return res.status(403).json({ error: 'registration_disabled' });
     }
 
     const user = new User({ username, password });
     await user.save();
-    console.log(`✅ User registered: ${username}`);
+    console.log(` User registered: ${username}`);
     return res.status(201).json({ ok: true });
   } catch (err) {
     console.error('Register error:', err);
@@ -69,7 +69,7 @@ app.post('/api/login', async (req, res) => {
       return res.status(401).json({ error: 'wrong_password' });
     }
 
-    console.log(`✅ User logged in: ${username}`);
+    console.log(` User logged in: ${username}`);
     return res.json({ ok: true });
   } catch (err) {
     console.error('Login error:', err);
@@ -165,10 +165,15 @@ app.delete('/api/users/:username', async (req, res) => {
   }
 });
 
+// Redirect root to login page
+app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
 // Serve static files
 app.use(express.static(path.join(__dirname)));
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-  console.log(`📊 MongoDB: ${MONGODB_URI}`);
+  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(` MongoDB: ${MONGODB_URI}`);
 });
