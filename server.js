@@ -37,8 +37,7 @@ app.post('/api/register', async (req, res) => {
       if (existingUser) {
         return res.status(409).json({ error: 'exists' });
       }
-      // Registration disabled after first user (uncomment to enforce)
-      return res.status(403).json({ error: 'registration_disabled' });
+      
     }
 
     const user = new User({ username, password });

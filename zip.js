@@ -96,7 +96,7 @@ async function loadPuzzleOrThrow(id) {
 
   function fmtMs(ms) {
     if (ms == null) return '—';
-    const s = Math.floor(ms / 1000);
+    const s = (ms / 1000).toFixed(3);
     return `${s}s`;
   }
 
