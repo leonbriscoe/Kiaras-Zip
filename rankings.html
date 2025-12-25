@@ -3,31 +3,358 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rankings</title>
+  <title>Rankings - Leaderboard</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Rankings Page Specific Styles */
+    .leaderboard {
+      margin-top: 20px;
+    }
+
+    .leaderboard-header {
+      display: grid;
+      grid-template-columns: 60px 1fr 100px 100px 100px;
+      gap: 12px;
+      padding: 14px 16px;
+      background: rgba(0,0,0,0.05);
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .leaderboard-row {
+      display: grid;
+      grid-template-columns: 60px 1fr 100px 100px 100px;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(255,255,255,0.7);
+      border-radius: 14px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(0,0,0,0.06);
+      transition: all 0.25s ease;
+      align-items: center;
+    }
+
+    .leaderboard-row:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+
+    .rank-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 18px;
+      background: linear-gradient(145deg, #555 0%, #333 100%);
+      color: white;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .rank-1 .rank-badge {
+      background: linear-gradient(145deg, #ffd700 0%, #ffb300 100%);
+      color: #5a4800;
+      box-shadow: 0 4px 20px rgba(255, 215, 0, 0.5);
+    }
+
+    .rank-2 .rank-badge {
+      background: linear-gradient(145deg, #e8e8e8 0%, #b8b8b8 100%);
+      color: #444;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+
+    .rank-3 .rank-badge {
+      background: linear-gradient(145deg, #cd7f32 0%, #a0522d 100%);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(205, 127, 50, 0.4);
+    }
+
+    .player-name {
+      font-weight: 700;
+      font-size: 17px;
+    }
+
+    .stat-value {
+      font-weight: 600;
+      font-size: 15px;
+      text-align: center;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      opacity: 0.6;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .rank-selector {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    .rank-btn {
+      padding: 12px 20px;
+      border: 2px solid rgba(0,0,0,0.15);
+      background: rgba(255,255,255,0.8);
+      cursor: pointer;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s ease;
+    }
+
+    .rank-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .rank-btn.active {
+      background: #111;
+      color: white;
+      border-color: #111;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+    }
+
+    .empty-state-icon {
+      font-size: 64px;
+      margin-bottom: 16px;
+    }
+
+    .trophy-icon {
+      font-size: 28px;
+      margin-right: 10px;
+    }
+
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    @media (max-width: 600px) {
+      .leaderboard-header,
+      .leaderboard-row {
+        grid-template-columns: 50px 1fr;
+        gap: 8px;
+      }
+      .leaderboard-header .stat-label:not(:first-child):not(:nth-child(2)),
+      .leaderboard-row .stat-value:not(:first-child):not(:nth-child(2)) {
+        display: none;
+      }
+      .player-name {
+        font-size: 15px;
+      }
+      .stat-value {
+        font-size: 12px;
+      }
+    }
+
+    /* Theme Overrides for Rankings */
+    body.theme-flowers .leaderboard-row {
+      background: rgba(255, 249, 245, 0.9);
+      border-color: rgba(212, 165, 116, 0.2);
+    }
+    body.theme-flowers .rank-btn.active {
+      background: linear-gradient(135deg, #8b5a3c 0%, #a0674b 100%);
+      border-color: #8b5a3c;
+    }
+    body.theme-flowers .leaderboard-header {
+      background: rgba(212, 165, 116, 0.15);
+    }
+
+    body.theme-geometry .leaderboard-row {
+      background: rgba(26, 26, 46, 0.9);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+      color: #e0e0e0;
+    }
+    body.theme-geometry .leaderboard-row:hover {
+      box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+      border-color: rgba(0, 255, 136, 0.5);
+    }
+    body.theme-geometry .leaderboard-header {
+      background: rgba(0, 255, 136, 0.1);
+      color: #00ff88;
+    }
+    body.theme-geometry .rank-btn {
+      background: #1a1a2e;
+      border-color: #00ff88;
+      color: #00ff88;
+    }
+    body.theme-geometry .rank-btn:hover {
+      box-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+    }
+    body.theme-geometry .rank-btn.active {
+      background: linear-gradient(135deg, #00ff88 0%, #00cc6a 100%);
+      color: #0f0f1a;
+    }
+    body.theme-geometry .rank-1 .rank-badge {
+      background: linear-gradient(145deg, #00ff88 0%, #00cc6a 100%);
+      color: #0f0f1a;
+      box-shadow: 0 0 25px rgba(0, 255, 136, 0.6);
+    }
+    body.theme-geometry .rank-2 .rank-badge {
+      background: linear-gradient(145deg, #00ccff 0%, #0099cc 100%);
+      color: #0f0f1a;
+      box-shadow: 0 0 20px rgba(0, 204, 255, 0.5);
+    }
+    body.theme-geometry .rank-3 .rank-badge {
+      background: linear-gradient(145deg, #ff0066 0%, #cc0052 100%);
+      color: white;
+      box-shadow: 0 0 20px rgba(255, 0, 102, 0.5);
+    }
+    body.theme-geometry .empty-state {
+      color: #00ff88;
+    }
+
+    body.theme-pacman .leaderboard-row {
+      background: rgba(0, 0, 51, 0.9);
+      border: 2px solid rgba(33, 33, 222, 0.4);
+      color: #ffffff;
+    }
+    body.theme-pacman .leaderboard-row:hover {
+      box-shadow: 0 0 30px rgba(33, 33, 222, 0.4);
+      border-color: #ffff00;
+    }
+    body.theme-pacman .leaderboard-header {
+      background: rgba(33, 33, 222, 0.2);
+      color: #ffff00;
+    }
+    body.theme-pacman .rank-btn {
+      background: #000033;
+      border-color: #2121de;
+      color: #ffff00;
+    }
+    body.theme-pacman .rank-btn:hover {
+      box-shadow: 0 0 15px rgba(33, 33, 222, 0.4);
+    }
+    body.theme-pacman .rank-btn.active {
+      background: linear-gradient(135deg, #ffff00 0%, #ffcc00 100%);
+      color: #000022;
+      border-color: #ffff00;
+    }
+    body.theme-pacman .rank-1 .rank-badge {
+      background: linear-gradient(145deg, #ffff00 0%, #ffcc00 100%);
+      color: #000022;
+      box-shadow: 0 0 25px rgba(255, 255, 0, 0.6);
+    }
+    body.theme-pacman .rank-2 .rank-badge {
+      background: linear-gradient(145deg, #ff0000 0%, #cc0000 100%);
+      color: white;
+      box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+    }
+    body.theme-pacman .rank-3 .rank-badge {
+      background: linear-gradient(145deg, #00ffff 0%, #00cccc 100%);
+      color: #000022;
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+    body.theme-pacman .empty-state {
+      color: #ffff00;
+    }
+
+    /* Christmas Theme Overrides for Rankings */
+    body.theme-christmas .leaderboard-row {
+      background: linear-gradient(145deg, rgba(13, 45, 31, 0.9) 0%, rgba(13, 35, 48, 0.9) 100%);
+      border: 2px solid rgba(196, 30, 58, 0.5);
+      color: #ffffff;
+    }
+    body.theme-christmas .leaderboard-row:hover {
+      box-shadow: 0 0 35px rgba(255, 215, 0, 0.4), 0 0 20px rgba(196, 30, 58, 0.3);
+      border-color: #ffd700;
+      transform: translateY(-3px);
+    }
+    body.theme-christmas .leaderboard-header {
+      background: rgba(196, 30, 58, 0.25);
+      color: #ffd700;
+      border: 1px solid rgba(255, 215, 0, 0.2);
+    }
+    body.theme-christmas .rank-btn {
+      background: linear-gradient(145deg, rgba(22, 91, 51, 0.9) 0%, rgba(13, 61, 41, 0.9) 100%);
+      border-color: #c41e3a;
+      color: #ffd700;
+    }
+    body.theme-christmas .rank-btn:hover {
+      box-shadow: 0 0 20px rgba(196, 30, 58, 0.5);
+      background: linear-gradient(145deg, rgba(26, 112, 61, 0.95) 0%, rgba(22, 91, 51, 0.95) 100%);
+    }
+    body.theme-christmas .rank-btn.active {
+      background: linear-gradient(135deg, #c41e3a 0%, #a01729 100%);
+      color: white;
+      border-color: #ffd700;
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.4);
+    }
+    body.theme-christmas .rank-1 .rank-badge {
+      background: linear-gradient(145deg, #ffd700 0%, #ffb300 100%);
+      color: #5a1f1f;
+      box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+      border: 2px solid #fff;
+    }
+    body.theme-christmas .rank-2 .rank-badge {
+      background: linear-gradient(145deg, #ffffff 0%, #c0c0c0 100%);
+      color: #c41e3a;
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.5);
+      border: 2px solid #e0e0e0;
+    }
+    body.theme-christmas .rank-3 .rank-badge {
+      background: linear-gradient(145deg, #c41e3a 0%, #8b1729 100%);
+      color: white;
+      box-shadow: 0 0 25px rgba(196, 30, 58, 0.6);
+      border: 2px solid #ffd700;
+    }
+    body.theme-christmas .empty-state {
+      color: #ffd700;
+    }
+  </style>
 </head>
 <body>
+  <script>
+    // Apply theme immediately to prevent flash of unstyled content
+    (function() {
+      const theme = localStorage.getItem('zip_theme') || 'christmas';
+      document.body.classList.add('theme-' + theme);
+    })();
+  </script>
+  
   <main class="wrap">
     <section class="card">
       <div class="topbar">
         <a class="btn btn-ghost" href="index.html">← Back</a>
         <div class="titleblock">
-          <h1 class="h1">Rankings</h1>
-          <p class="subtitle">Rank users by solved count or time.</p>
+          <h1 class="h1 page-title">
+            <span class="trophy-icon">🏆</span>
+            Leaderboard
+          </h1>
         </div>
       </div>
 
-      <div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-        <label style="font-weight:700">Rank by:</label>
-        <select id="rankBy">
-          <option value="count">Number solved (desc)</option>
-          <option value="mean">Mean time (asc)</option>
-          <option value="median">Median time (asc)</option>
-        </select>
+      <div class="rank-selector">
+        <button class="rank-btn active" data-mode="count">
+          🎯 Most Solved
+        </button>
+        <button class="rank-btn" data-mode="mean">
+          ⚡ Fastest (Avg)
+        </button>
+        <button class="rank-btn" data-mode="median">
+          📊 Fastest (Median)
+        </button>
       </div>
 
-      <div id="rankContainer" style="margin-top:12px">
-        <p class="msg">Loading rankings…</p>
+      <div id="rankContainer" class="leaderboard">
+        <div class="empty-state">
+          <div class="empty-state-icon">⏳</div>
+          <p class="msg">Loading rankings…</p>
+        </div>
       </div>
     </section>
   </main>
@@ -94,35 +421,6 @@
       return out;
     }
 
-    function render(usersObj, stats, mode) {
-      const container = document.getElementById('rankContainer');
-      container.innerHTML = '';
-      const title = document.createElement('div');
-      title.className = 'title';
-      title.textContent = 'User Rankings';
-      container.appendChild(title);
-
-      const list = document.createElement('ol');
-      const entries = Object.keys(stats).map(u => ({ user: u, ...stats[u] }));
-      if (mode === 'count') entries.sort((a,b)=> (b.count - a.count) || (a.mean || 1e9) - (b.mean || 1e9));
-      else if (mode === 'mean') entries.sort((a,b)=> ( (a.mean||1e9) - (b.mean||1e9) ) || (b.count - a.count));
-      else if (mode === 'median') entries.sort((a,b)=> ( (a.median||1e9) - (b.median||1e9) ) || (b.count - a.count));
-
-      for (const e of entries) {
-        const li = document.createElement('li');
-        const uname = document.createElement('span');
-        uname.style.fontWeight = 700;
-        uname.textContent = e.user;
-        const meta = document.createElement('span');
-        meta.style.marginLeft = '8px';
-        meta.textContent = ` solved=${e.count} mean=${fmtMs(e.mean)} median=${fmtMs(e.median)}`;
-        li.appendChild(uname);
-        li.appendChild(meta);
-        list.appendChild(li);
-      }
-      container.appendChild(list);
-    }
-
     function fmtMs(ms) {
       if (ms == null) return '—';
       const s = Math.floor(ms/1000);
@@ -130,12 +428,92 @@
       return `${s}.${String(rem).padStart(3,'0')}s`;
     }
 
+    function getModeLabel(mode) {
+      switch(mode) {
+        case 'count': return 'Most Puzzles Solved';
+        case 'mean': return 'Fastest Average Time';
+        case 'median': return 'Fastest Median Time';
+        default: return 'Rankings';
+      }
+    }
+
+    function render(usersObj, stats, mode) {
+      const container = document.getElementById('rankContainer');
+      const entries = Object.keys(stats).map(u => ({ user: u, ...stats[u] }));
+      
+      if (mode === 'count') entries.sort((a,b)=> (b.count - a.count) || (a.mean || 1e9) - (b.mean || 1e9));
+      else if (mode === 'mean') entries.sort((a,b)=> ( (a.mean||1e9) - (b.mean||1e9) ) || (b.count - a.count));
+      else if (mode === 'median') entries.sort((a,b)=> ( (a.median||1e9) - (b.median||1e9) ) || (b.count - a.count));
+
+      if (entries.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">👻</div>
+            <p class="msg">No players yet!</p>
+            <p style="opacity:0.6;margin-top:8px">Complete some puzzles to get on the board.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = `
+        <div class="leaderboard-header">
+          <span class="stat-label">Rank</span>
+          <span class="stat-label">Player</span>
+          <span class="stat-label">Solved</span>
+          <span class="stat-label">Avg Time</span>
+          <span class="stat-label">Median</span>
+        </div>
+      `;
+
+      entries.forEach((e, index) => {
+        const rank = index + 1;
+        const rankClass = rank <= 3 ? `rank-${rank}` : '';
+        const primaryStat = mode === 'count' ? e.count : (mode === 'mean' ? fmtMs(e.mean) : fmtMs(e.median));
+        
+        html += `
+          <div class="leaderboard-row ${rankClass}">
+            <div class="rank-badge">${rank}</div>
+            <div class="player-name">${escapeHtml(e.user)}</div>
+            <div class="stat-value">${e.count}</div>
+            <div class="stat-value">${fmtMs(e.mean)}</div>
+            <div class="stat-value">${fmtMs(e.median)}</div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Rank selector buttons
+    document.querySelectorAll('.rank-btn').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('.rank-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        const mode = this.dataset.mode;
+        loadAndRender(mode);
+      });
+    });
+
+    let cachedData = null;
+
+    async function loadAndRender(mode) {
+      if (!cachedData) {
+        cachedData = await loadData();
+        cachedData.stats = computeStats(cachedData.progress);
+      }
+      render(cachedData.users, cachedData.stats, mode);
+    }
+
+    // Initialize
     (async function(){
-      const { users, progress } = await loadData();
-      const stats = computeStats(progress);
-      const select = document.getElementById('rankBy');
-      render(users, stats, select.value);
-      select.addEventListener('change', ()=> render(users, stats, select.value));
+      await loadAndRender('count');
     })();
   </script>
 </body>

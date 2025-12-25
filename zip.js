@@ -20,6 +20,46 @@ async function loadPuzzleOrThrow(id) {
   return puzzle;
 }
 
+async function getAllPuzzleIds() {
+  const res = await fetch("puzzles.json", { cache: "no-store" });
+  if (!res.ok) return [];
+  const data = await res.json();
+  const zips = Array.isArray(data.zips) ? data.zips : [];
+  return zips.map(z => Number(z.id)).filter(id => Number.isFinite(id)).sort((a, b) => a - b);
+}
+
+function setupNavigation(currentId, allIds) {
+  const nextBtn = document.getElementById("nextBtn");
+  
+  if (!nextBtn || !allIds || allIds.length === 0) return;
+  
+  const currentIndex = allIds.indexOf(currentId);
+  
+  // Disable next button if at last puzzle
+  if (currentIndex < 0 || currentIndex >= allIds.length - 1) {
+    nextBtn.disabled = true;
+    nextBtn.style.opacity = "0.4";
+    nextBtn.style.cursor = "not-allowed";
+  } else {
+    nextBtn.disabled = false;
+    nextBtn.style.opacity = "1";
+    nextBtn.style.cursor = "pointer";
+    nextBtn.addEventListener("click", () => {
+      const nextId = allIds[currentIndex + 1];
+      window.location.href = `zip.html?id=${nextId}`;
+    });
+  }
+  
+  // Add keyboard shortcut (Ctrl/Cmd + Right Arrow)
+  document.addEventListener("keydown", (e) => {
+    // Only trigger if Ctrl (Windows/Linux) or Cmd (Mac) is pressed
+    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight" && !nextBtn.disabled) {
+      e.preventDefault();
+      nextBtn.click();
+    }
+  });
+}
+
 (async function main() {
   // --- per-user helpers (localStorage-backed, lightweight) ---
   function getCurrentUser() {
@@ -75,6 +115,10 @@ async function loadPuzzleOrThrow(id) {
     const puzzle = await loadPuzzleOrThrow(id);
     ZIP_NUMBER = puzzle.id;
     ZIP_GRID = puzzle.grid;
+    
+    // Setup navigation buttons
+    const allIds = await getAllPuzzleIds();
+    setupNavigation(ZIP_NUMBER, allIds);
   } catch (err) {
     console.error(err);
     document.title = `Zip #${id}`;
@@ -156,8 +200,8 @@ async function loadPuzzleOrThrow(id) {
       document.getElementById('board').style.pointerEvents = 'none';
       document.getElementById('undoBtn').disabled = true;
       document.getElementById('resetBtn').disabled = true;
-      document.getElementById('checkBtn').disabled = true;
-      document.getElementById('solveBtn').disabled = true;
+      document.getElementById('hintBtn').disabled = true;
+      document.getElementById('revealBtn').disabled = true;
     } else {
       // Start timer only if page is visible now
       startTimerIfVisible();
@@ -195,8 +239,8 @@ async function loadPuzzleOrThrow(id) {
 
   const undoBtn  = document.getElementById("undoBtn");
   const resetBtn = document.getElementById("resetBtn");
-  const checkBtn = document.getElementById("checkBtn");
-  const solveBtn = document.getElementById("solveBtn");
+  const hintBtn = document.getElementById("hintBtn");
+  const revealBtn = document.getElementById("revealBtn");
 
   // Map number -> location
   const positions = new Map();
@@ -213,6 +257,9 @@ async function loadPuzzleOrThrow(id) {
   let path = [];
   let isDragging = false;
   let lastHoverKey = null;    // prevents re-processing the same cell while dragging
+  let hintCooldownUntil = 0;  // timestamp for hint cooldown
+  let currentHintArrow = null; // reference to current hint arrow element
+  let hintCooldownInterval = null; // interval for updating cooldown progress bar
 
   function orthAdjacent(a, b) {
     const dr = Math.abs(a.r - b.r);
@@ -295,10 +342,74 @@ async function loadPuzzleOrThrow(id) {
     pathEl.setAttribute("d", d.join(" "));
   }
 
-  function tryAddCell(rc) {
+  function clearHintArrow() {
+    if (currentHintArrow) {
+      currentHintArrow.remove();
+      currentHintArrow = null;
+    }
+  }
+
+  function updateHintCooldownBar() {
+    const cooldownBar = document.getElementById('hintCooldownBar');
+    if (!cooldownBar) return;
+    
+    const now = Date.now();
+    if (now >= hintCooldownUntil) {
+      cooldownBar.style.width = '100%';
+      if (hintCooldownInterval) {
+        clearInterval(hintCooldownInterval);
+        hintCooldownInterval = null;
+      }
+      return;
+    }
+    
+    // Calculate progress (0 to 100%)
+    const totalDuration = 5000; // 5 seconds
+    const elapsed = totalDuration - (hintCooldownUntil - now);
+    const progress = Math.min(100, Math.max(0, (elapsed / totalDuration) * 100));
+    cooldownBar.style.width = progress + '%';
+  }
+
+  function startHintCooldown() {
+    hintCooldownUntil = Date.now() + 5000;
+    
+    // Clear any existing interval
+    if (hintCooldownInterval) {
+      clearInterval(hintCooldownInterval);
+    }
+    
+    // Update immediately and then every 50ms for smooth animation
+    updateHintCooldownBar();
+    hintCooldownInterval = setInterval(updateHintCooldownBar, 50);
+  }
+
+  function showHintArrow(fromCell, toCell) {
+    clearHintArrow();
+    
+    const el = boardEl.querySelector(`[data-r="${fromCell.r}"][data-c="${fromCell.c}"]`);
+    if (!el) return;
+    
+    // Determine direction
+    let arrowClass = 'zip-hint-arrow';
+    if (toCell.r < fromCell.r) arrowClass += ' arrow-up';      // up
+    else if (toCell.r > fromCell.r) arrowClass += ' arrow-down'; // down
+    else if (toCell.c < fromCell.c) arrowClass += ' arrow-left'; // left
+    else if (toCell.c > fromCell.c) arrowClass += ' arrow-right'; // right
+    
+    const arrowEl = document.createElement('div');
+    arrowEl.className = arrowClass;
+    el.appendChild(arrowEl);
+    
+    currentHintArrow = arrowEl;
+  }
+
+  function tryAddCell(rc, allowRewind = false) {
     const key = `${rc.r},${rc.c}`;
     if (key === lastHoverKey) return;
     lastHoverKey = key;
+
+    // Clear any hint arrow when user makes a move
+    clearHintArrow();
 
     if (path.length === 0) {
       if (grid[rc.r][rc.c] !== 1) {
@@ -306,21 +417,24 @@ async function loadPuzzleOrThrow(id) {
         return;
       }
       path.push(rc);
-      const needed = nextRequiredNumber();
-      setMsg(needed ? `Next number: ${needed}.` : "Cover every cell and end at the last number.");
       redraw();
       return;
     }
 
-    // Rewind by touching an earlier cell
+    // Check if this cell is already in the path (crossing itself)
     const hitIndex = path.findIndex(p => p.r === rc.r && p.c === rc.c);
     if (hitIndex !== -1) {
-      if (finishedLock) return; // no rewinding after solved
+      if (finishedLock) return; // no changes after solved
+      
+      // Block crossing during dragging (allowRewind = false)
+      // But allow clicking on a visited cell to rewind to that position (allowRewind = true)
+      if (!allowRewind) {
+        // During drag: completely block crossing
+        return;
+      }
+      
+      // During click: rewind to that position (fast alternative to undo button)
       path = path.slice(0, hitIndex + 1);
-
-      const needed = nextRequiredNumber();
-      if (needed) setMsg(`Rewound. Next number: ${needed}.`);
-      else setMsg("Rewound. Cover every cell and end at the last number.");
       redraw();
       return;
     }
@@ -387,18 +501,14 @@ async function loadPuzzleOrThrow(id) {
         document.getElementById('board').style.pointerEvents = 'none';
         undoBtn.disabled = true;
         resetBtn.disabled = true;
-        checkBtn.disabled = true;
-        solveBtn.disabled = true;
+        hintBtn.disabled = true;
+        revealBtn.disabled = true;
       } else {
         setMsg("Not solved yet.", false);
       }
       redraw();
       return;
     }
-
-    const after = nextRequiredNumber();
-    if (after === null) setMsg("All numbers hit. Cover every cell and end at the last number.");
-    else setMsg(`Next number: ${after}.`);
 
     redraw();
   }
@@ -411,22 +521,11 @@ async function loadPuzzleOrThrow(id) {
     lastHoverKey = null;
     finishedLock = false;
     
-    // Reset timer to 0
-    _elapsedMs = 0;
-    _visibleStartMs = document.visibilityState === 'visible' ? Date.now() : null;
-    timerEl.textContent = '0s';
+    // Clear any hint arrow
+    clearHintArrow();
     
-    // Clear persisted start time for this puzzle
-    const user = getCurrentUser();
-    if (user) {
-      const d = getUserData(user);
-      if (d.startTimes) {
-        delete d.startTimes[ZIP_NUMBER];
-        saveUserData(user, d);
-      }
-    }
+    // Timer continues running (not reset)
     
-    setMsg("Drag starting from 1.");
     redraw();
   }
 
@@ -435,8 +534,121 @@ async function loadPuzzleOrThrow(id) {
     if (path.length === 0) return;
     path.pop();
     lastHoverKey = null;
-    setMsg("Undone.");
+    
+    // Clear any hint arrow
+    clearHintArrow();
+    
     redraw();
+  }
+
+  function hint() {
+    if (finishedLock) return;
+    
+    // Check cooldown
+    const now = Date.now();
+    if (now < hintCooldownUntil) {
+      return; // Silently ignore during cooldown, progress bar shows status
+    }
+    
+    // Clear previous hint arrow
+    clearHintArrow();
+    
+    // Solve from current state
+    const sol = solveFromCurrentPath();
+    
+    if (!sol || sol.length <= path.length) {
+      return;
+    }
+    
+    // Get current position and next position
+    let fromCell;
+    if (path.length === 0) {
+      // If no path, hint should start from cell 1
+      fromCell = findCellWithValue(1);
+      if (!fromCell) return;
+      const nextCell = sol[0];
+      // Show arrow pointing to start cell if path is empty
+      showHintArrow(fromCell, fromCell); // This will just show indicator on start cell
+    } else {
+      fromCell = path[path.length - 1];
+      const nextCell = sol[path.length];
+      // Show arrow pointing from current head to next cell
+      showHintArrow(fromCell, nextCell);
+    }
+    
+    // Start cooldown with progress bar
+    startHintCooldown();
+  }
+
+  function solveFromCurrentPath() {
+    // If path is empty, solve from scratch
+    if (path.length === 0) {
+      return solveZipDFS();
+    }
+    
+    // Build a solution that continues from current path
+    const visited = Array.from({ length: n }, () => Array(n).fill(false));
+    const solPath = [];
+    
+    // Mark current path as visited
+    for (const p of path) {
+      visited[p.r][p.c] = true;
+      solPath.push(p);
+    }
+    
+    const cur = path[path.length - 1];
+    
+    // Figure out which required numbers we've already hit
+    let nextReqIdx = 0;
+    for (const reqNum of requiredNums) {
+      const pos = positions.get(reqNum);
+      const hit = path.some(p => p.r === pos.r && p.c === pos.c);
+      if (hit) nextReqIdx++;
+      else break;
+    }
+    
+    function dfs(curr, reqIdx) {
+      if (solPath.length === N) {
+        if (reqIdx !== requiredNums.length) return false;
+        return grid[curr.r][curr.c] === lastRequired;
+      }
+
+      const needed = (reqIdx < requiredNums.length) ? requiredNums[reqIdx] : null;
+
+      const cand = neighbors4(curr.r, curr.c)
+        .filter(nb => !visited[nb.r][nb.c])
+        .filter(nb => {
+          const v = grid[nb.r][nb.c];
+          if (v === 0) return true;
+          if (needed === null) return true;
+          return v === needed;
+        })
+        .map(nb => {
+          let deg = 0;
+          for (const nn of neighbors4(nb.r, nb.c)) if (!visited[nn.r][nn.c]) deg++;
+          return { nb, deg };
+        })
+        .sort((a, b) => a.deg - b.deg)
+        .map(x => x.nb);
+
+      for (const nb of cand) {
+        const v = grid[nb.r][nb.c];
+        let newIdx = reqIdx;
+        if (needed !== null && v === needed) newIdx = reqIdx + 1;
+
+        visited[nb.r][nb.c] = true;
+        solPath.push(nb);
+
+        if (dfs(nb, newIdx)) return true;
+
+        solPath.pop();
+        visited[nb.r][nb.c] = false;
+      }
+      return false;
+    }
+
+    const ok = dfs(cur, nextReqIdx);
+    return ok ? solPath : null;
   }
 
   function check() {
@@ -479,8 +691,8 @@ async function loadPuzzleOrThrow(id) {
       document.getElementById('board').style.pointerEvents = 'none';
       undoBtn.disabled = true;
       resetBtn.disabled = true;
-      checkBtn.disabled = true;
-      solveBtn.disabled = true;
+      hintBtn.disabled = true;
+      revealBtn.disabled = true;
       redraw();
       return;
     }
@@ -523,13 +735,13 @@ async function loadPuzzleOrThrow(id) {
     lastHoverKey = null;
     boardEl.setPointerCapture?.(e.pointerId);
     const rc = cellAtPoint(e.clientX, e.clientY);
-    if (rc) tryAddCell(rc);
+    if (rc) tryAddCell(rc, true); // Allow rewind on initial click
   }
 
   function onPointerMove(e) {
     if (!isDragging) return;
     const rc = cellAtPoint(e.clientX, e.clientY);
-    if (rc) tryAddCell(rc);
+    if (rc) tryAddCell(rc, false); // Do NOT allow rewind during dragging
   }
 
   function onPointerUp() {
@@ -539,12 +751,61 @@ async function loadPuzzleOrThrow(id) {
 
   undoBtn.addEventListener("click", undo);
   resetBtn.addEventListener("click", reset);
-  checkBtn.addEventListener("click", check);
+  hintBtn.addEventListener("click", hint);
 
   boardEl.addEventListener("pointerdown", onPointerDown);
   window.addEventListener("pointermove", onPointerMove);
   window.addEventListener("pointerup", onPointerUp);
   window.addEventListener("pointercancel", onPointerUp);
+
+  // ----------------------------
+  // Keyboard Controls (Arrow Keys)
+  // ----------------------------
+  window.addEventListener("keydown", (e) => {
+    // Skip if user is typing in an input field
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    // Skip if puzzle is locked (completed)
+    if (finishedLock || isPreviouslyCompleted) return;
+
+    // Only handle arrow keys
+    if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    
+    e.preventDefault(); // Prevent page scrolling
+
+    let targetCell = null;
+
+    if (path.length === 0) {
+      // If no path yet, find the cell with value 1
+      const start = findCellWithValue(1);
+      if (start) {
+        targetCell = start;
+      }
+    } else {
+      // Move from the current head position
+      const head = path[path.length - 1];
+      
+      switch(e.key) {
+        case 'ArrowUp':
+          if (head.r > 0) targetCell = { r: head.r - 1, c: head.c };
+          break;
+        case 'ArrowDown':
+          if (head.r < n - 1) targetCell = { r: head.r + 1, c: head.c };
+          break;
+        case 'ArrowLeft':
+          if (head.c > 0) targetCell = { r: head.r, c: head.c - 1 };
+          break;
+        case 'ArrowRight':
+          if (head.c < n - 1) targetCell = { r: head.r, c: head.c + 1 };
+          break;
+      }
+    }
+
+    if (targetCell) {
+      lastHoverKey = null; // Reset to allow processing
+      tryAddCell(targetCell, false); // Block rewind with keyboard arrows (prevent accidental resets)
+    }
+  });
 
   // ----------------------------
   // Solver (DFS)
@@ -622,8 +883,8 @@ async function loadPuzzleOrThrow(id) {
     return ok ? solPath : null;
   }
 
-  solveBtn.addEventListener("click", () => {
-    setMsg("Solving…");
+  revealBtn.addEventListener("click", () => {
+    setMsg("Revealing solution…");
     const sol = solveZipDFS();
     if (!sol) {
       setMsg("No solution found.", false);
@@ -635,7 +896,7 @@ async function loadPuzzleOrThrow(id) {
     // If solver produced a full correct solution, lock it
     if (path.length === N && isSolvedNow()) {
       finishedLock = true;
-      setMsg("Solved.", true);
+      setMsg("Solution revealed.", true);
     } else {
       setMsg("Solved path loaded.", true);
     }
@@ -645,6 +906,10 @@ async function loadPuzzleOrThrow(id) {
 
   // init
   buildBoard();
+  
+  // Initialize hint cooldown bar to 100%
+  const cooldownBar = document.getElementById('hintCooldownBar');
+  if (cooldownBar) cooldownBar.style.width = '100%';
   
   // If previously completed, show the solved path instead of allowing reset
   if (isPreviouslyCompleted) {

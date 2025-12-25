@@ -129,6 +129,34 @@ app.get('/api/progress', async (req, res) => {
   }
 });
 
+// API: Get specific user's progress
+app.get('/api/progress/:username', async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase();
+    const progressDocs = await Progress.find({ username });
+    
+    // Transform to localStorage format
+    const result = {
+      opened: {},
+      completed: {},
+      times: {},
+      startTimes: {}
+    };
+    
+    for (const doc of progressDocs) {
+      result.completed[doc.puzzleId] = true;
+      result.opened[doc.puzzleId] = true;
+      result.times[doc.puzzleId] = doc.timeMs;
+    }
+    
+    return res.json(result);
+  } catch (err) {
+    console.error('User progress fetch error:', err);
+    return res.status(500).json({ error: 'server_error' });
+  }
+});
+
+
 // Admin: List users (protected)
 app.get('/api/users', async (req, res) => {
   const token = req.header('x-admin-token');

@@ -11,14 +11,14 @@
   <script>
     // Apply theme immediately to prevent flash of unstyled content
     (function() {
-      const theme = localStorage.getItem('zip_theme') || 'flowers';
+      const theme = localStorage.getItem('zip_theme') || 'christmas';
       document.body.classList.add('theme-' + theme);
     })();
   </script>
   <main class="wrap">
     <section class="card">
       <div class="auth-container">
-        <h1>Let's Play Zip!</h1>
+        <h1>Welcome to PuzzlePath!</h1>
 
         <div class="auth-tabs">
           <button class="auth-tab active" data-tab="login">Sign In</button>
@@ -114,7 +114,22 @@
         });
 
         if (res.ok) {
+          // Set current user in localStorage
           localStorage.setItem("zip_currentUser", username);
+          
+          // Sync user's progress from server to localStorage
+          try {
+            const progressRes = await fetch(`/api/progress/${encodeURIComponent(username)}`);
+            if (progressRes.ok) {
+              const userData = await progressRes.json();
+              localStorage.setItem(`zip_user_${username}`, JSON.stringify(userData));
+              console.log('✓ Synced user data from server to localStorage');
+            }
+          } catch (syncErr) {
+            console.warn('Failed to sync user data:', syncErr);
+            // Continue anyway - user can still login
+          }
+          
           window.location.href = "index.html";
           return;
         }
@@ -209,4 +224,5 @@
   </script>
 </body>
 </html>
+
 

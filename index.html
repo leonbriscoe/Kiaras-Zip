@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Let's Play Zip!</title>
+  <title>Welcome to PuzzlePath!</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 
@@ -11,7 +11,7 @@
   <script>
     // Apply theme immediately to prevent flash of unstyled content
     (function() {
-      const theme = localStorage.getItem('zip_theme') || 'flowers';
+      const theme = localStorage.getItem('zip_theme') || 'christmas';
       document.body.classList.add('theme-' + theme);
       
       // Redirect to login if not logged in
@@ -35,6 +35,9 @@
       <div class="theme-selector">
         <div class="theme-selector-title">Select Theme</div>
         <div class="theme-options">
+          <button class="theme-option" data-theme="christmas">
+            Christmas
+          </button>
           <button class="theme-option" data-theme="flowers">
             Tan & Flowers
           </button>
@@ -47,7 +50,7 @@
         </div>
       </div>
 
-      <h1>Let's Play Zip!</h1>
+      <h1>Welcome to PuzzlePath!</h1>
       <p class="subtitle">Drag from 1 → 2 → 3 → … Cover every cell!</p>
 
       <div id="dashboard" class="dashboard"></div>
@@ -79,6 +82,32 @@
     function saveUserData(user, data) {
       if (!user) return;
       localStorage.setItem(`zip_user_${user}`, JSON.stringify(data));
+    }
+    
+    // Sync user data from server to localStorage
+    async function syncUserDataFromServer(username) {
+      try {
+        const res = await fetch(`/api/progress/${encodeURIComponent(username)}`);
+        if (res.ok) {
+          const serverData = await res.json();
+          const localData = getUserData(username);
+          
+          // Merge server data with local data (server takes precedence for completed puzzles)
+          const mergedData = {
+            opened: { ...localData.opened, ...serverData.opened },
+            completed: { ...localData.completed, ...serverData.completed },
+            times: { ...localData.times, ...serverData.times },
+            startTimes: localData.startTimes || {}
+          };
+          
+          saveUserData(username, mergedData);
+          console.log('✓ Synced user data from server');
+          return true;
+        }
+      } catch (err) {
+        console.warn('Failed to sync user data from server:', err);
+      }
+      return false;
     }
 
     function markOpenedForUser(user, id) {
@@ -127,7 +156,7 @@
 
         function fmtMs(ms) {
           if (ms == null) return "—";
-          const s = Math.floor(ms / 1000);
+          const s = Math.floor(ms / 1000).toFixed(3);
           return `${s}s`;
         }
 
@@ -185,7 +214,7 @@
     // Theme Management
     // =====================
     function getTheme() {
-      return localStorage.getItem('zip_theme') || 'flowers';
+      return localStorage.getItem('zip_theme') || 'christmas';
     }
 
     function setTheme(theme) {
@@ -194,7 +223,7 @@
     }
 
     function applyTheme(theme) {
-      document.body.classList.remove('theme-flowers', 'theme-geometry', 'theme-pacman');
+      document.body.classList.remove('theme-flowers', 'theme-geometry', 'theme-pacman', 'theme-christmas');
       document.body.classList.add('theme-' + theme);
       
       // Update active state on theme buttons
@@ -213,7 +242,7 @@
     // =====================
     // Initialize
     // =====================
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       const user = getCurrentUser();
       if (!user) {
         window.location.href = "login.html";
@@ -222,6 +251,9 @@
       
       document.getElementById('currentUsername').textContent = user;
       applyTheme(getTheme());
+      
+      // Sync data from server, then load zips
+      await syncUserDataFromServer(user);
       loadZips();
     });
   </script>

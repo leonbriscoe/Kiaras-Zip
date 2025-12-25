@@ -11,7 +11,7 @@
   <script>
     // Apply theme immediately to prevent flash of unstyled content
     (function() {
-      const theme = localStorage.getItem('zip_theme') || 'flowers';
+      const theme = localStorage.getItem('zip_theme') || 'christmas';
       document.body.classList.add('theme-' + theme);
     })();
   </script>
@@ -23,6 +23,7 @@
           <h1 class="h1" id="zipTitle">Zip</h1>
           <p class="subtitle">Drag from 1 → 2 → 3 → … Cover every cell.</p>
         </div>
+        <button class="btn btn-ghost" id="nextBtn" type="button">Next →</button>
       </div>
 
       <div class="zip-stage">
@@ -36,10 +37,16 @@
       <div class="controls">
         <button class="btn" id="undoBtn" type="button">Undo</button>
         <button class="btn btn-ghost" id="resetBtn" type="button">Reset</button>
-        <button class="btn" id="checkBtn" type="button">Check</button>
-        <button class="btn" id="solveBtn" type="button">Solve</button>
-        <div id="timer" style="margin-left:12px;font-weight:700;font-size:18px">0s</div>
+        <button class="btn hint-cooldown-container" id="hintBtn" type="button">
+          Hint
+          <div class="hint-cooldown-bar" id="hintCooldownBar"></div>
+        </button>
+        <button class="btn" id="revealBtn" type="button">Reveal</button>
         <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      </div>
+      
+      <div class="timer-container">
+        <div id="timer">0s</div>
       </div>
     </section>
   </main>
