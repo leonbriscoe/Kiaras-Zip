@@ -30,32 +30,59 @@ async function getAllPuzzleIds() {
 
 function setupNavigation(currentId, allIds) {
   const nextBtn = document.getElementById("nextBtn");
+  const prevBtn = document.getElementById("prevBtn");
   
-  if (!nextBtn || !allIds || allIds.length === 0) return;
+  if (!allIds || allIds.length === 0) return;
   
   const currentIndex = allIds.indexOf(currentId);
   
-  // Disable next button if at last puzzle
-  if (currentIndex < 0 || currentIndex >= allIds.length - 1) {
-    nextBtn.disabled = true;
-    nextBtn.style.opacity = "0.4";
-    nextBtn.style.cursor = "not-allowed";
-  } else {
-    nextBtn.disabled = false;
-    nextBtn.style.opacity = "1";
-    nextBtn.style.cursor = "pointer";
-    nextBtn.addEventListener("click", () => {
-      const nextId = allIds[currentIndex + 1];
-      window.location.href = `zip.html?id=${nextId}`;
-    });
+  // Setup Next button
+  if (nextBtn) {
+    // Disable next button if at last puzzle
+    if (currentIndex < 0 || currentIndex >= allIds.length - 1) {
+      nextBtn.disabled = true;
+      nextBtn.style.opacity = "0.4";
+      nextBtn.style.cursor = "not-allowed";
+    } else {
+      nextBtn.disabled = false;
+      nextBtn.style.opacity = "1";
+      nextBtn.style.cursor = "pointer";
+      nextBtn.addEventListener("click", () => {
+        const nextId = allIds[currentIndex + 1];
+        window.location.href = `/zip?id=${nextId}`;
+      });
+    }
   }
   
-  // Add keyboard shortcut (Ctrl/Cmd + Right Arrow)
+  // Setup Prev button
+  if (prevBtn) {
+    // Disable prev button if at first puzzle
+    if (currentIndex <= 0) {
+      prevBtn.disabled = true;
+      prevBtn.style.opacity = "0.4";
+      prevBtn.style.cursor = "not-allowed";
+    } else {
+      prevBtn.disabled = false;
+      prevBtn.style.opacity = "1";
+      prevBtn.style.cursor = "pointer";
+      prevBtn.addEventListener("click", () => {
+        const prevId = allIds[currentIndex - 1];
+        window.location.href = `/zip?id=${prevId}`;
+      });
+    }
+  }
+  
+  // Add keyboard shortcuts (Ctrl/Cmd + Arrow keys)
   document.addEventListener("keydown", (e) => {
     // Only trigger if Ctrl (Windows/Linux) or Cmd (Mac) is pressed
-    if ((e.ctrlKey || e.metaKey) && e.key === "ArrowRight" && !nextBtn.disabled) {
-      e.preventDefault();
-      nextBtn.click();
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === "ArrowRight" && nextBtn && !nextBtn.disabled) {
+        e.preventDefault();
+        nextBtn.click();
+      } else if (e.key === "ArrowLeft" && prevBtn && !prevBtn.disabled) {
+        e.preventDefault();
+        prevBtn.click();
+      }
     }
   });
 }
@@ -154,6 +181,9 @@ function setupNavigation(currentId, allIds) {
   }
 
   function startTimerIfVisible() {
+    // Don't start timer if puzzle is already solved
+    if (finishedLock || isPreviouslyCompleted) return;
+    
     if (document.visibilityState === 'visible') {
       if (_visibleStartMs == null) _visibleStartMs = Date.now();
       if (_timerRaf) cancelAnimationFrame(_timerRaf);
@@ -465,6 +495,10 @@ function setupNavigation(currentId, allIds) {
     if (path.length === N) {
       if (isSolvedNow()) {
         finishedLock = true; // lock once solved (prevents rewind/undo)
+        
+        // Stop the timer
+        stopTimerIfHidden();
+        
         setMsg("Solved.", true);
         // Persist completion for current user (only when user actually solved it)
         try {
@@ -472,9 +506,6 @@ function setupNavigation(currentId, allIds) {
           if (user) {
             // Calculate total elapsed time
             let elapsed = _elapsedMs;
-            if (_visibleStartMs != null) {
-              elapsed += Date.now() - _visibleStartMs;
-            }
             
             const d = getUserData(user);
             d.times = d.times || {};
@@ -659,15 +690,16 @@ function setupNavigation(currentId, allIds) {
 
     if (isSolvedNow()) {
       finishedLock = true; // lock if solved via Check
+      
+      // Stop the timer
+      stopTimerIfHidden();
+      
       setMsg("Solved.", true);
       try {
         const user = getCurrentUser();
         if (user) {
           // Calculate total elapsed time
           let elapsed = _elapsedMs;
-          if (_visibleStartMs != null) {
-            elapsed += Date.now() - _visibleStartMs;
-          }
           
           const d = getUserData(user);
           d.times = d.times || {};

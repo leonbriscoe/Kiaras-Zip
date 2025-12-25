@@ -17,7 +17,7 @@
       // Redirect to login if not logged in
       const user = localStorage.getItem("zip_currentUser");
       if (!user) {
-        window.location.href = "login.html";
+        window.location.href = "/login";
       }
     })();
   </script>
@@ -26,7 +26,7 @@
       <div class="user-header">
         <span class="user-info">Welcome, <strong id="currentUsername"></strong>!</span>
         <div style="display:flex;gap:8px">
-          <a href="rankings.html" class="btn-logout">Rankings</a>
+          <a href="/rankings" class="btn-logout">Rankings</a>
           <button id="logoutBtn" class="btn-logout">Logout</button>
         </div>
       </div>
@@ -123,7 +123,7 @@
     // =====================
     document.getElementById('logoutBtn').addEventListener('click', () => {
       localStorage.removeItem("zip_currentUser");
-      window.location.href = "login.html";
+      window.location.href = "/login";
     });
 
     // =====================
@@ -156,8 +156,9 @@
 
         function fmtMs(ms) {
           if (ms == null) return "—";
-          const s = Math.floor(ms / 1000).toFixed(3);
-          return `${s}s`;
+          const s = Math.floor(ms / 1000);
+          const rem = Math.floor(ms % 1000);
+          return `${s}.${String(rem).padStart(3, '0')}s`;
         }
 
         // Prepare completed times
@@ -190,7 +191,7 @@
           const n = Array.isArray(z.grid) ? z.grid.length : 0;
           const a = document.createElement("a");
           a.className = "btn";
-          a.href = `zip.html?id=${encodeURIComponent(z.id)}`;
+          a.href = `/zip?id=${encodeURIComponent(z.id)}`;
           a.dataset.id = String(z.id);
           a.textContent = `Zip #${z.id}${n ? ` (${n}×${n})` : ""}`;
 
@@ -245,7 +246,7 @@
     document.addEventListener('DOMContentLoaded', async () => {
       const user = getCurrentUser();
       if (!user) {
-        window.location.href = "login.html";
+        window.location.href = "/login";
         return;
       }
       

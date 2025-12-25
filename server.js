@@ -192,12 +192,28 @@ app.delete('/api/users/:username', async (req, res) => {
   }
 });
 
-// Redirect root to login page
+// Clean URL routes (without .html extension)
 app.get('/', (req, res) => {
-  res.redirect('/login.html');
+  res.redirect('/login');
 });
 
-// Serve static files
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'login.html'));
+});
+
+app.get('/home', (req, res) => {
+  res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/zip', (req, res) => {
+  res.sendFile(path.join(__dirname, 'zip.html'));
+});
+
+app.get('/rankings', (req, res) => {
+  res.sendFile(path.join(__dirname, 'rankings.html'));
+});
+
+// Serve static files (CSS, JS, JSON, etc.)
 app.use(express.static(path.join(__dirname)));
 
 app.listen(PORT, () => {

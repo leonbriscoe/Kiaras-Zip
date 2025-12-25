@@ -19,6 +19,7 @@
     <section class="card">
       <div class="auth-container">
         <h1>Welcome to PuzzlePath!</h1>
+        <p class="subtitle" style="margin-top: -10px; margin-bottom: 20px; font-size: 14px; opacity: 0.8;">Created by Kiara & Leon</p>
 
         <div class="auth-tabs">
           <button class="auth-tab active" data-tab="login">Sign In</button>
@@ -52,7 +53,7 @@
     (function() {
       const user = localStorage.getItem("zip_currentUser");
       if (user) {
-        window.location.href = "index.html";
+        window.location.href = "/home";
       }
     })();
 
@@ -130,7 +131,7 @@
             // Continue anyway - user can still login
           }
           
-          window.location.href = "index.html";
+          window.location.href = "/home";
           return;
         }
 
