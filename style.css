@@ -51,6 +51,13 @@ body {
   align-items: flex-start;
 }
 
+@media (max-width: 600px) {
+  .topbar {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 8px;
+  }
+}
+
 .home-btn {
   padding: 10px 12px !important;
   display: inline-flex !important;
@@ -65,6 +72,12 @@ body {
 .titleblock {
   min-width: 200px;
   text-align: center;
+}
+
+@media (max-width: 600px) {
+  .titleblock {
+    min-width: 0;
+  }
 }
 
 .topbar > :first-child {
